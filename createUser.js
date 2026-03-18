@@ -6,8 +6,8 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-const email = 'mama@salon.cz';
-const password = 'heslo123';
+const email = 'your@email.cz';
+const password = 'nyourPassword';
 
 const hash = bcrypt.hashSync(password, 10);
 
