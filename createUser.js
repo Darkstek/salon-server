@@ -2,11 +2,8 @@ const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'salon_booking',
-  password: 'postgres123',
-  port: 5432,
+  connectionString: 'postgresql://postgres:AItaTfAkOPnLmWMilHehYIiJTaQspFlH@mainline.proxy.rlwy.net:25345/railway',
+  ssl: { rejectUnauthorized: false }
 });
 
 const email = 'mama@salon.cz';
