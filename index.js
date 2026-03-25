@@ -99,7 +99,7 @@ app.get('/api/customers/:id/detail', async (req, res) => {
     WHERE customer_id = $1 
     AND appointment_date < CURRENT_DATE
     ORDER BY appointment_date DESC 
-    LIMIT 3
+    LIMIT 5
   `, [id]);
 
   const upcoming = await pool.query(`
@@ -107,7 +107,7 @@ app.get('/api/customers/:id/detail', async (req, res) => {
     WHERE customer_id = $1 
     AND appointment_date >= CURRENT_DATE
     ORDER BY appointment_date ASC 
-    LIMIT 1
+    LIMIT 5
   `, [id]);
 
   res.json({
