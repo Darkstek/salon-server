@@ -110,10 +110,10 @@ app.get('/api/customers/:id/detail', async (req, res) => {
     LIMIT 5
   `, [id]);
 
-  res.json({
-    history: history.rows,
-    upcoming: upcoming.rows[0] || null
-  });
+    res.json({
+      history: history.rows,
+      upcoming: upcoming.rows  
+});
 });
 
 app.listen(5000, () => {
