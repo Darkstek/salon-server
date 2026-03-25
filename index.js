@@ -3,6 +3,8 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
+const googleClient = new OAuth2Client('783420070926-3fijlp9s34nlo0q8joh04ughnn707ml2.apps.googleusercontent.com');
 
 const JWT_SECRET = 'salon_tajny_klic_2026';
 
@@ -114,6 +116,31 @@ app.get('/api/customers/:id/detail', async (req, res) => {
       history: history.rows,
       upcoming: upcoming.rows  
 });
+});
+
+// Google login
+app.post('/api/auth/google', async (req, res) => {
+  const { token } = req.body;
+
+  const ticket = await googleClient.verifyIdToken({
+    idToken: token,
+    audience: '783420070926-3fijlp9s34nlo0q8joh04ughnn707ml2.apps.googleusercontent.com',
+  });
+
+  const payload = ticket.getPayload();
+  const email = payload.email;
+
+  let user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+
+  if (user.rows.length === 0) {
+    user = await pool.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *',
+      [email, 'google-oauth']
+    );
+  }
+
+  const jwtToken = jwt.sign({ userId: user.rows[0].id }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token: jwtToken });
 });
 
 app.listen(5000, () => {
