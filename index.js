@@ -90,6 +90,32 @@ app.delete('/api/customers/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// Detail zákazníka - historie a aktivní schůzka
+app.get('/api/customers/:id/detail', async (req, res) => {
+  const { id } = req.params;
+  
+  const history = await pool.query(`
+    SELECT * FROM appointments 
+    WHERE customer_id = $1 
+    AND appointment_date < CURRENT_DATE
+    ORDER BY appointment_date DESC 
+    LIMIT 3
+  `, [id]);
+
+  const upcoming = await pool.query(`
+    SELECT * FROM appointments 
+    WHERE customer_id = $1 
+    AND appointment_date >= CURRENT_DATE
+    ORDER BY appointment_date ASC 
+    LIMIT 1
+  `, [id]);
+
+  res.json({
+    history: history.rows,
+    upcoming: upcoming.rows[0] || null
+  });
+});
+
 app.listen(5000, () => {
   console.log('Server běží na portu 5000');
 });
