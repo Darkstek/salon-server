@@ -194,6 +194,36 @@ app.get('/api/profiles/public', async (req, res) => {
   res.json(result.rows);
 });
 
+// Získat služby podnikatele (veřejné - bez autentizace)
+app.get('/api/services/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const result = await pool.query(
+    'SELECT * FROM services WHERE user_id = $1 ORDER BY created_at ASC',
+    [userId]
+  );
+  res.json(result.rows);
+});
+
+// Přidat službu (pouze přihlášený podnikatel)
+app.post('/api/services', authenticate, async (req, res) => {
+  const { name, price, duration } = req.body;
+  const result = await pool.query(
+    'INSERT INTO services (user_id, name, price, duration) VALUES ($1, $2, $3, $4) RETURNING *',
+    [req.userId, name, price, duration]
+  );
+  res.json(result.rows[0]);
+});
+
+// Smazat službu (pouze přihlášený podnikatel)
+app.delete('/api/services/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  await pool.query(
+    'DELETE FROM services WHERE id = $1 AND user_id = $2',
+    [id, req.userId]
+  );
+  res.json({ success: true });
+});
+
 app.listen(5000, () => {
   console.log('Server běží na portu 5000');
 });

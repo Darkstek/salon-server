@@ -41,19 +41,33 @@ async function setup() {
   console.log('Sloupce user_id přidány!');
   
   await pool.query(`
-  CREATE TABLE IF NOT EXISTS profiles (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER UNIQUE REFERENCES users(id),
-    business_name VARCHAR(100),
-    phone VARCHAR(20),
-    address TEXT,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`);
-console.log('Tabulka profiles vytvořena!');
+    CREATE TABLE IF NOT EXISTS profiles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER UNIQUE REFERENCES users(id),
+      business_name VARCHAR(100),
+      phone VARCHAR(20),
+      address TEXT,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('Tabulka profiles vytvořena!');
 
-process.exit();
+  // 👇 NOVÉ: tabulka pro služby podnikatele
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS services (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      name VARCHAR(100) NOT NULL,
+      price INTEGER,
+      duration INTEGER,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('Tabulka services vytvořena!');
+  // 👆 konec nového bloku
+
+  process.exit();
 }
 
 setup().catch(err => {
