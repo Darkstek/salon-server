@@ -88,6 +88,9 @@ app.delete('/api/appointments/:id', async (req, res) => {
 // Smazat zákazníka
 app.delete('/api/customers/:id', async (req, res) => {
   const { id } = req.params;
+  // Nejdřív smaž všechny termíny zákazníka
+  await pool.query('DELETE FROM appointments WHERE customer_id = $1', [id]);
+  // Pak smaž zákazníka
   await pool.query('DELETE FROM customers WHERE id = $1', [id]);
   res.json({ success: true });
 });
