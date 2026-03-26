@@ -19,6 +19,20 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
+// Middleware pro ověření tokenu
+const authenticate = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Nepřihlášen' });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Neplatný token' });
+  }
+};
+
 // Test endpoint
 app.get('/api/test', async (req, res) => {
   const result = await pool.query('SELECT NOW()');
@@ -26,39 +40,43 @@ app.get('/api/test', async (req, res) => {
 });
 
 // Získat všechny zákazníky
-app.get('/api/customers', async (req, res) => {
-  const result = await pool.query('SELECT * FROM customers ORDER BY created_at DESC');
+app.get('/api/customers', authenticate, async (req, res) => {
+  const result = await pool.query(
+    'SELECT * FROM customers WHERE user_id = $1 ORDER BY created_at DESC',
+    [req.userId]
+  );
   res.json(result.rows);
 });
 
 // Přidat zákazníka
-app.post('/api/customers', async (req, res) => {
+app.post('/api/customers', authenticate, async (req, res) => {
   const { name, phone, note } = req.body;
   const result = await pool.query(
-    'INSERT INTO customers (name, phone, note) VALUES ($1, $2, $3) RETURNING *',
-    [name, phone, note]
+    'INSERT INTO customers (name, phone, note, user_id) VALUES ($1, $2, $3, $4) RETURNING *',
+    [name, phone, note, req.userId]
   );
   res.json(result.rows[0]);
 });
 
 // Přidat termín
-app.post('/api/appointments', async (req, res) => {
+app.post('/api/appointments', authenticate, async (req, res) => {
   const { customer_id, service_name, appointment_date, appointment_time, note } = req.body;
   const result = await pool.query(
-    'INSERT INTO appointments (customer_id, service_name, appointment_date, appointment_time, note) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [customer_id, service_name, appointment_date, appointment_time, note]
+    'INSERT INTO appointments (customer_id, service_name, appointment_date, appointment_time, note, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [customer_id, service_name, appointment_date, appointment_time, note, req.userId]
   );
   res.json(result.rows[0]);
 });
 
 // Získat všechny termíny
-app.get('/api/appointments', async (req, res) => {
+app.get('/api/appointments', authenticate, async (req, res) => {
   const result = await pool.query(`
     SELECT a.*, c.name as customer_name 
     FROM appointments a
     JOIN customers c ON a.customer_id = c.id
+    WHERE a.user_id = $1
     ORDER BY appointment_date, appointment_time
-  `);
+  `, [req.userId]);
   res.json(result.rows);
 });
 
@@ -79,46 +97,44 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Smazat termín
-app.delete('/api/appointments/:id', async (req, res) => {
+app.delete('/api/appointments/:id', authenticate, async (req, res) => {
   const { id } = req.params;
-  await pool.query('DELETE FROM appointments WHERE id = $1', [id]);
+  await pool.query('DELETE FROM appointments WHERE id = $1 AND user_id = $2', [id, req.userId]);
   res.json({ success: true });
 });
 
 // Smazat zákazníka
-app.delete('/api/customers/:id', async (req, res) => {
+app.delete('/api/customers/:id', authenticate, async (req, res) => {
   const { id } = req.params;
-  // Nejdřív smaž všechny termíny zákazníka
-  await pool.query('DELETE FROM appointments WHERE customer_id = $1', [id]);
-  // Pak smaž zákazníka
-  await pool.query('DELETE FROM customers WHERE id = $1', [id]);
+  await pool.query('DELETE FROM appointments WHERE customer_id = $1 AND user_id = $2', [id, req.userId]);
+  await pool.query('DELETE FROM customers WHERE id = $1 AND user_id = $2', [id, req.userId]);
   res.json({ success: true });
 });
 
-// Detail zákazníka - historie a aktivní schůzka
-app.get('/api/customers/:id/detail', async (req, res) => {
+// Detail zákazníka
+app.get('/api/customers/:id/detail', authenticate, async (req, res) => {
   const { id } = req.params;
   
   const history = await pool.query(`
     SELECT * FROM appointments 
-    WHERE customer_id = $1 
+    WHERE customer_id = $1 AND user_id = $2
     AND appointment_date < CURRENT_DATE
     ORDER BY appointment_date DESC 
     LIMIT 5
-  `, [id]);
+  `, [id, req.userId]);
 
   const upcoming = await pool.query(`
     SELECT * FROM appointments 
-    WHERE customer_id = $1 
+    WHERE customer_id = $1 AND user_id = $2
     AND appointment_date >= CURRENT_DATE
     ORDER BY appointment_date ASC 
     LIMIT 5
-  `, [id]);
+  `, [id, req.userId]);
 
-    res.json({
-      history: history.rows,
-      upcoming: upcoming.rows  
-});
+  res.json({
+    history: history.rows,
+    upcoming: upcoming.rows
+  });
 });
 
 // Google login
