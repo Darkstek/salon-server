@@ -162,6 +162,38 @@ app.post('/api/auth/google', async (req, res) => {
   res.json({ token: jwtToken });
 });
 
+// Získat profil
+app.get('/api/profile', authenticate, async (req, res) => {
+  const result = await pool.query(
+    'SELECT * FROM profiles WHERE user_id = $1',
+    [req.userId]
+  );
+  res.json(result.rows[0] || null);
+});
+
+// Uložit/upravit profil
+app.post('/api/profile', authenticate, async (req, res) => {
+  const { business_name, phone, address, description } = req.body;
+  
+  const result = await pool.query(`
+    INSERT INTO profiles (user_id, business_name, phone, address, description)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (user_id) 
+    DO UPDATE SET business_name = $2, phone = $3, address = $4, description = $5
+    RETURNING *
+  `, [req.userId, business_name, phone, address, description]);
+  
+  res.json(result.rows[0]);
+});
+
+// Veřejný seznam všech profilů
+app.get('/api/profiles/public', async (req, res) => {
+  const result = await pool.query(
+    'SELECT id, business_name, phone, address, description FROM profiles WHERE business_name IS NOT NULL ORDER BY business_name'
+  );
+  res.json(result.rows);
+});
+
 app.listen(5000, () => {
   console.log('Server běží na portu 5000');
 });

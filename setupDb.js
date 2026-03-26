@@ -40,7 +40,20 @@ async function setup() {
   `);
   console.log('Sloupce user_id přidány!');
   
-  process.exit();
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS profiles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE REFERENCES users(id),
+    business_name VARCHAR(100),
+    phone VARCHAR(20),
+    address TEXT,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+console.log('Tabulka profiles vytvořena!');
+
+process.exit();
 }
 
 setup().catch(err => {
