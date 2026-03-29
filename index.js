@@ -189,7 +189,7 @@ app.post('/api/profile', authenticate, async (req, res) => {
 // Veřejný seznam všech profilů
 app.get('/api/profiles/public', async (req, res) => {
   const result = await pool.query(
-    'SELECT id, business_name, phone, address, description FROM profiles WHERE business_name IS NOT NULL ORDER BY business_name'
+    'SELECT id, user_id, business_name, phone, address, description FROM profiles WHERE business_name IS NOT NULL ORDER BY business_name'
   );
   res.json(result.rows);
 });
