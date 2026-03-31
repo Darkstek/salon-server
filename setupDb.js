@@ -70,7 +70,6 @@ async function setup() {
   `);
   console.log('Tabulka services vytvořena!');
 
-  console.log('Začínám vytvářet availability...');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS availability (
       id SERIAL PRIMARY KEY,

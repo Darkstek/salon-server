@@ -302,6 +302,19 @@ app.get('/api/slots/:userId/:date', async (req, res) => {
   res.json({ slots });
 });
 
+// Veřejná rezervace od zákazníka
+app.post('/api/bookings', async (req, res) => {
+  const { user_id, service_name, appointment_date, appointment_time, customer_name, customer_phone } = req.body;
+
+  // Nejdřív vytvoříme neregistrovaného zákazníka nebo ho najdeme
+  const result = await pool.query(
+    'INSERT INTO appointments (customer_name_unregistered, service_name, appointment_date, appointment_time, note, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [customer_name, service_name, appointment_date, appointment_time, customer_phone || null, user_id]
+  );
+
+  res.json({ success: true, appointment: result.rows[0] });
+});
+
 app.listen(5000, () => {
   console.log('Server běží na portu 5000');
 });
