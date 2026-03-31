@@ -58,7 +58,6 @@ async function setup() {
   `);
   console.log('Tabulka profiles vytvořena!');
 
-  // 👇 NOVÉ: tabulka pro služby podnikatele
   await pool.query(`
     CREATE TABLE IF NOT EXISTS services (
       id SERIAL PRIMARY KEY,
@@ -70,7 +69,24 @@ async function setup() {
     );
   `);
   console.log('Tabulka services vytvořena!');
-  // 👆 konec nového bloku
+
+  console.log('Začínám vytvářet availability...');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS availability (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      day_of_week INTEGER NOT NULL,
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      slot_duration INTEGER NOT NULL DEFAULT 60
+    );
+  `);
+  console.log('Tabulka availability vytvořena!');
+
+  await pool.query(`
+    ALTER TABLE profiles ADD COLUMN IF NOT EXISTS slot_duration INTEGER DEFAULT 60;
+  `);
+  console.log('Sloupec slot_duration přidán do profiles!');
 
   process.exit();
 }
