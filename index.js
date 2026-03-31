@@ -224,6 +224,84 @@ app.delete('/api/services/:id', authenticate, async (req, res) => {
   res.json({ success: true });
 });
 
+// Uložit dostupnost podnikatele
+app.post('/api/availability', authenticate, async (req, res) => {
+  const { availability, slot_duration } = req.body;
+
+  // Smažeme starou dostupnost a uložíme novou
+  await pool.query('DELETE FROM availability WHERE user_id = $1', [req.userId]);
+
+  for (const day of availability) {
+    await pool.query(
+      'INSERT INTO availability (user_id, day_of_week, start_time, end_time, slot_duration) VALUES ($1, $2, $3, $4, $5)',
+      [req.userId, day.day_of_week, day.start_time, day.end_time, slot_duration]
+    );
+  }
+
+  await pool.query(
+    'UPDATE profiles SET slot_duration = $1 WHERE user_id = $2',
+    [slot_duration, req.userId]
+  );
+
+  res.json({ success: true });
+});
+
+// Získat dostupnost podnikatele
+app.get('/api/availability', authenticate, async (req, res) => {
+  const result = await pool.query(
+    'SELECT * FROM availability WHERE user_id = $1 ORDER BY day_of_week',
+    [req.userId]
+  );
+  res.json(result.rows);
+});
+
+// Získat volné sloty pro daný den (veřejné)
+app.get('/api/slots/:userId/:date', async (req, res) => {
+  const { userId, date } = req.params;
+
+  // Zjistíme jaký den v týdnu je vybrané datum (0 = neděle, 1 = pondělí...)
+  const dayOfWeek = new Date(date).getDay();
+
+  // Načteme dostupnost pro tento den
+  const availResult = await pool.query(
+    'SELECT * FROM availability WHERE user_id = $1 AND day_of_week = $2',
+    [userId, dayOfWeek]
+  );
+
+  if (availResult.rows.length === 0) {
+    return res.json({ slots: [] });
+  }
+
+  const avail = availResult.rows[0];
+  const slotDuration = avail.slot_duration;
+
+  // Načteme už zarezervované termíny pro tento den
+  const bookedResult = await pool.query(
+    'SELECT appointment_time FROM appointments WHERE user_id = $1 AND appointment_date = $2',
+    [userId, date]
+  );
+  const bookedTimes = bookedResult.rows.map(r => r.appointment_time.slice(0, 5));
+
+  // Vygenerujeme všechny sloty
+  const slots = [];
+  let current = avail.start_time.slice(0, 5);
+  const end = avail.end_time.slice(0, 5);
+
+  while (current < end) {
+    if (!bookedTimes.includes(current)) {
+      slots.push(current);
+    }
+    // Přičteme slot_duration minut
+    const [h, m] = current.split(':').map(Number);
+    const total = h * 60 + m + slotDuration;
+    const newH = Math.floor(total / 60).toString().padStart(2, '0');
+    const newM = (total % 60).toString().padStart(2, '0');
+    current = `${newH}:${newM}`;
+  }
+
+  res.json({ slots });
+});
+
 app.listen(5000, () => {
   console.log('Server běží na portu 5000');
 });
