@@ -39,6 +39,11 @@ async function setup() {
     ALTER TABLE appointments ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);
   `);
   console.log('Sloupce user_id přidány!');
+
+  await pool.query(`
+    ALTER TABLE appointments ADD COLUMN IF NOT EXISTS customer_name_unregistered VARCHAR(100);
+  `);
+  console.log('Sloupec customer_name_unregistered přidán!');
   
   await pool.query(`
     CREATE TABLE IF NOT EXISTS profiles (

@@ -60,10 +60,10 @@ app.post('/api/customers', authenticate, async (req, res) => {
 
 // Přidat termín
 app.post('/api/appointments', authenticate, async (req, res) => {
-  const { customer_id, service_name, appointment_date, appointment_time, note } = req.body;
+  const { customer_id, customer_name_unregistered, service_name, appointment_date, appointment_time, note } = req.body;
   const result = await pool.query(
-    'INSERT INTO appointments (customer_id, service_name, appointment_date, appointment_time, note, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-    [customer_id, service_name, appointment_date, appointment_time, note, req.userId]
+    'INSERT INTO appointments (customer_id, customer_name_unregistered, service_name, appointment_date, appointment_time, note, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [customer_id || null, customer_name_unregistered || null, service_name, appointment_date, appointment_time, note, req.userId]
   );
   res.json(result.rows[0]);
 });
@@ -71,9 +71,9 @@ app.post('/api/appointments', authenticate, async (req, res) => {
 // Získat všechny termíny
 app.get('/api/appointments', authenticate, async (req, res) => {
   const result = await pool.query(`
-    SELECT a.*, c.name as customer_name 
+    SELECT a.*, COALESCE(c.name, a.customer_name_unregistered) as customer_name 
     FROM appointments a
-    JOIN customers c ON a.customer_id = c.id
+    LEFT JOIN customers c ON a.customer_id = c.id
     WHERE a.user_id = $1
     ORDER BY appointment_date, appointment_time
   `, [req.userId]);
