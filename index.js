@@ -141,6 +141,22 @@ app.delete("/api/appointments/:id", authenticate, async (req, res) => {
   res.json({ success: true });
 });
 
+// Upravit termín
+app.patch("/api/appointments/:id", authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { appointment_date, appointment_time, service_name, note } = req.body;
+
+  const result = await pool.query(
+    `UPDATE appointments 
+     SET appointment_date = $1, appointment_time = $2, service_name = $3, note = $4
+     WHERE id = $5 AND user_id = $6
+     RETURNING *`,
+    [appointment_date, appointment_time, service_name, note, id, req.userId],
+  );
+
+  res.json(result.rows[0]);
+});
+
 // Smazat zákazníka
 app.delete("/api/customers/:id", authenticate, async (req, res) => {
   const { id } = req.params;
