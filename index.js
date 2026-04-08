@@ -68,6 +68,19 @@ app.post("/api/appointments", authenticate, async (req, res) => {
     appointment_time,
     note,
   } = req.body;
+
+  // Zkontroluj jestli v ten čas už existuje termín
+  const conflict = await pool.query(
+    "SELECT id FROM appointments WHERE user_id = $1 AND appointment_date = $2 AND appointment_time = $3",
+    [req.userId, appointment_date, appointment_time],
+  );
+
+  if (conflict.rows.length > 0) {
+    return res
+      .status(409)
+      .json({ conflict: true, message: "V tento čas již existuje termín" });
+  }
+
   const result = await pool.query(
     "INSERT INTO appointments (customer_id, customer_name_unregistered, service_name, appointment_date, appointment_time, note, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
     [
