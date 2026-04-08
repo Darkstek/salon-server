@@ -75,7 +75,7 @@ app.post("/api/appointments", authenticate, async (req, res) => {
     [req.userId, appointment_date, appointment_time],
   );
 
-  if (conflict.rows.length > 0) {
+  if (conflict.rows.length > 0 && !req.body.force) {
     return res
       .status(409)
       .json({ conflict: true, message: "V tento čas již existuje termín" });
