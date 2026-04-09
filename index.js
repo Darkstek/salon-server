@@ -436,11 +436,15 @@ app.post("/api/ai/chat", authenticate, async (req, res) => {
     Odpovídej stručně a v češtině. Pokud se ptají na zákazníka nebo termín, hledej v datech.
   `;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  const result = await model.generateContent([context, message]);
-  const response = result.response.text();
-
-  res.json({ reply: response });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  try {
+    const result = await model.generateContent([context, message]);
+    const response = result.response.text();
+    res.json({ reply: response });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ reply: "AI není momentálně dostupná." });
+  }
 });
 
 app.listen(5000, () => {
