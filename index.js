@@ -1,5 +1,7 @@
 require("dotenv").config();
 const express = require("express");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const cors = require("cors");
 const { Pool } = require("pg");
 const jwt = require("jsonwebtoken");
@@ -400,6 +402,45 @@ app.post("/api/bookings", async (req, res) => {
   );
 
   res.json({ success: true, appointment: result.rows[0] });
+});
+
+// Gemini AI chat
+app.post("/api/ai/chat", authenticate, async (req, res) => {
+  const { message } = req.body;
+
+  // Načteme data uživatele pro kontext
+  const appointments = await pool.query(
+    `
+    SELECT COALESCE(c.name, a.customer_name_unregistered) as customer_name,
+    a.service_name, a.appointment_date, a.appointment_time
+    FROM appointments a
+    LEFT JOIN customers c ON a.customer_id = c.id
+    WHERE a.user_id = $1
+    ORDER BY a.appointment_date DESC
+    LIMIT 50
+  `,
+    [req.userId],
+  );
+
+  const customers = await pool.query(
+    "SELECT name, phone FROM customers WHERE user_id = $1",
+    [req.userId],
+  );
+
+  const context = `
+    Jsi asistent pro správu salonu. Máš přístup k těmto datům:
+    
+    Zákazníci: ${JSON.stringify(customers.rows)}
+    Termíny: ${JSON.stringify(appointments.rows)}
+    
+    Odpovídej stručně a v češtině. Pokud se ptají na zákazníka nebo termín, hledej v datech.
+  `;
+
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const result = await model.generateContent([context, message]);
+  const response = result.response.text();
+
+  res.json({ reply: response });
 });
 
 app.listen(5000, () => {
